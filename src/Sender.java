@@ -1,8 +1,11 @@
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.util.zip.CRC32;
+import java.util.zip.CheckedInputStream;
 
 public class Sender {
 
@@ -39,6 +42,8 @@ public class Sender {
             e.printStackTrace();
         } catch (IOException e) {
             e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
 
 
@@ -64,14 +69,31 @@ public class Sender {
         System.out.println("Übertragener Handshake Counter: " + data);
     }
 
-    private void sendData(int handshakeCounter) throws IOException {
+    private void sendData(int handshakeCounter) throws IOException, InterruptedException {
         for (int i = 0; i< handshakeCounter; i++) {
             byte [] data = randomData();
-            packetOut.setData(data);
-            packetOut.setLength(data.length);
+            Thread.sleep(20);
+            byte[] outputData = addChecksum(data);
+            packetOut.setData(outputData);
+            packetOut.setLength(outputData.length);
             socket.send(packetOut);
             System.out.println("Gesendet :" + new String(data) + " Index "+ i);
         }
+    }
+
+    private byte[] addChecksum (byte [] data) {
+        //Daten mit Checksum Wert anreichern
+        ByteArrayInputStream is = new ByteArrayInputStream(data);
+        CheckedInputStream cs = new CheckedInputStream(is, new CRC32());
+        Long checksum=cs.getChecksum().getValue();
+
+        byte[] dataWithCheck= new byte[data.length+1];
+        for(int i=0; i<data.length; i++) {
+            dataWithCheck[i]=data[i];
+        }
+        dataWithCheck[dataWithCheck.length-1]= checksum.byteValue();
+        System.out.println("Checksum: " + checksum);
+        return dataWithCheck;
     }
 
     public static void main(String[] args) {

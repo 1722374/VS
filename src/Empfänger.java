@@ -1,8 +1,11 @@
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.util.zip.CRC32;
+import java.util.zip.CheckedInputStream;
 
 public class Empfänger {
 
@@ -14,8 +17,7 @@ public class Empfänger {
     private DatagramPacket packetIn;
     private DatagramPacket packetOut;
     private boolean handshakeSend= false;
-    int handshakeNumber = 25; //Anzahl der zu erwartenden Anfragen
-    int counter=0;
+    int handshakeNumber = 50000; //Anzahl der zu erwartenden Anfragen
 
     public Empfänger () {
 
@@ -63,6 +65,8 @@ public class Empfänger {
     private void receiveData() throws IOException {
 
         int handshakeCounter = 0;
+        int corruptPacket = 0;
+        String receivedPackages = "";
         while (true) {
             try {
                 if (!handshakeSend) {
@@ -70,29 +74,83 @@ public class Empfänger {
                 }
                 socket.setSoTimeout(TIMEOUT);
                 socket.receive(packetIn);
+
                 System.out.println("Empfangen " + packetIn.getLength() + "bytes: " + new String(packetIn.getData()));
+                byte[] result= new byte[packetIn.getLength()];
+
+                byte[] clientDataWithoutChecksum= new byte[packetIn.getLength()-1];
+
+                for(int i=0; i<packetIn.getLength()-1; i++) { // Bytearray bis zum Checksum lesen und in Array speichern (Eigentliche Daten)
+                    clientDataWithoutChecksum[i]=packetIn.getData()[i];
+                }
+
+                byte checksumFromclient= packetIn.getData()[packetIn.getLength()-1]; //checksum aus Datenpaket rauslesen (Client)
+               if(compare(checksumFromclient,clientDataWithoutChecksum)) {
+                   corruptPacket ++;
+               }
+
                 handshakeCounter++;
 
                 if (handshakeNumber == handshakeCounter) {
-                    System.out.print("Alle " + handshakeNumber +  " Pakete wurden erfolgreich gesendet");
-                    handshakeCounter = 0;
+                    output(handshakeCounter, corruptPacket);
                     handshakeSend = false;
+                    corruptPacket = 0;
+                    handshakeCounter = 0;
                 }
 
 
 
 
             }catch (SocketTimeoutException e ) { //Sobal der Client keine Daten mehr sendet
+                output(handshakeCounter, corruptPacket);
                 handshakeSend = false;
-                float percent =  (handshakeCounter* 100.0f) / handshakeNumber;
-                System.out.println("Es sind nur " + handshakeCounter + "/" + handshakeNumber + " Pakete angekommen (" + percent + "%)");
-
+                corruptPacket = 0;
                 handshakeCounter =0;
             }
+
         }
     }
 
 
+    private boolean compare(byte checksumClient, byte[] TextBytes) {
+        //Vergleicht CheckSum mit Sender Checksum
+        ByteArrayInputStream byteStream = new ByteArrayInputStream(TextBytes);
+        CheckedInputStream checkdStream = new CheckedInputStream(byteStream, new CRC32());
+        Long checksum = checkdStream.getChecksum().getValue();
+
+        if (checksumClient != checksum.byteValue()) {
+            return true;
+        }
+        return false;
+    }
+
+     private void output (int handshakeCounter, int corruptedPackages) {
+
+
+        if (handshakeCounter >0){
+            float percentReceived =  (handshakeCounter* 100.0f) / handshakeNumber;
+            String received = ("Es wurden " + handshakeCounter + "/" + handshakeNumber + " Pakete empfangen (" + percentReceived + "%)");
+            System.out.println(received);
+
+        } else {
+            String received = ("Es wurden " + handshakeCounter + "/" + handshakeNumber + " Pakete empfangen (0%)");
+            System.out.print(received);
+        }
+
+
+
+
+
+        if (corruptedPackages > 0 ) {
+            float percentCorrupt =  (corruptedPackages* 100.0f) / handshakeNumber;
+            String corrupt = ("Es waren " + handshakeCounter + "/" + handshakeNumber + " Pakete verfälscht (" + percentCorrupt + "%)");
+            System.out.println(corrupt);
+        } else {
+            String corrupt = ("Es waren " + handshakeCounter + "/" + handshakeNumber + " Pakete verfälscht (0%)");
+            System.out.println(corrupt);
+        }
+
+     }
 
 
 
