@@ -13,7 +13,7 @@ import java.util.zip.Checksum;
 
 public class Client {
 
-    private static final String HOST = "localhost";
+    private static final String HOST = " 192.168.17.1";
     private static final int PORT = 4711;
     private static final int BUFSIZE = 512;
     private static final int TIMEOUT = 4000;
