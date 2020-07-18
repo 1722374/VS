@@ -4,8 +4,10 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.util.zip.Adler32;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
+import java.util.zip.Checksum;
 
 public class Empfänger {
 
@@ -17,7 +19,7 @@ public class Empfänger {
     private DatagramPacket packetIn;
     private DatagramPacket packetOut;
     private boolean handshakeSend= false;
-    int handshakeNumber = 50000; //Anzahl der zu erwartenden Anfragen
+    int handshakeNumber = 5; //Anzahl der zu erwartenden Anfragen
 
     public Empfänger () {
 
@@ -78,13 +80,18 @@ public class Empfänger {
                 System.out.println("Empfangen " + packetIn.getLength() + "bytes: " + new String(packetIn.getData()));
                 byte[] result= new byte[packetIn.getLength()];
 
-                byte[] clientDataWithoutChecksum= new byte[packetIn.getLength()-1];
+                byte[] clientDataWithoutChecksum= new byte[packetIn.getLength()-9];
+                byte[] checksumFromclient= new byte[9];
 
-                for(int i=0; i<packetIn.getLength()-1; i++) { // Bytearray bis zum Checksum lesen und in Array speichern (Eigentliche Daten)
-                    clientDataWithoutChecksum[i]=packetIn.getData()[i];
+                for(int i=0; i<packetIn.getLength(); i++) { // Bytearray bis zum Checksum lesen und in Array speichern (Eigentliche Daten)
+                    if (i< packetIn.getLength() -9 ) {
+                        clientDataWithoutChecksum[i] = packetIn.getData()[i];
+                    }
+                    else{
+                        checksumFromclient [i - 18] = packetIn.getData()[i]; //checksum aus Datenpaket rauslesen (Client)
+                    }
                 }
 
-                byte checksumFromclient= packetIn.getData()[packetIn.getLength()-1]; //checksum aus Datenpaket rauslesen (Client)
                if(compare(checksumFromclient,clientDataWithoutChecksum)) {
                    corruptPacket ++;
                }
@@ -112,9 +119,9 @@ public class Empfänger {
     }
 
 
-    private boolean compare(byte checksumClient, byte[] TextBytes) {
+   /* private boolean compare(byte checksumClient, byte[] dataWithoutChecksum) {
         //Vergleicht CheckSum mit Sender Checksum
-        ByteArrayInputStream byteStream = new ByteArrayInputStream(TextBytes);
+        ByteArrayInputStream byteStream = new ByteArrayInputStream(dataWithoutChecksum);
         CheckedInputStream checkdStream = new CheckedInputStream(byteStream, new CRC32());
         Long checksum = checkdStream.getChecksum().getValue();
 
@@ -122,7 +129,23 @@ public class Empfänger {
             return true;
         }
         return false;
-    }
+    } */
+
+   private boolean compare(byte[] checksumClient, byte[] dataWithoutChecksum) {
+       //Vergleicht CheckSum mit Sender Checksum
+       Checksum adler32 = new Adler32();
+       adler32.update(dataWithoutChecksum,0, dataWithoutChecksum.length);
+       long checksum = adler32.getValue();
+       long checksumClientL = Long.parseLong(new String (checksumClient).trim());
+       System.out.print(checksum);
+       System.out.print(checksumClientL);
+
+       if (checksumClientL != checksum) {
+           return true;
+       }
+       return false;
+   }
+
 
      private void output (int handshakeCounter, int corruptedPackages) {
 

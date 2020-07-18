@@ -1,11 +1,14 @@
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.util.zip.Adler32;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
+import java.util.zip.Checksum;
 
 public class Sender {
 
@@ -18,7 +21,7 @@ public class Sender {
     private DatagramPacket packetIn;
     private boolean handshakeReceived = false;
     int handshakeCounter = 0; //Anzahl der zu erwartenden Anfragen
-    int counter = 0;
+
 
     Sender() {
 
@@ -76,12 +79,13 @@ public class Sender {
             byte[] outputData = addChecksum(data);
             packetOut.setData(outputData);
             packetOut.setLength(outputData.length);
+            System.out.println("Datenlänge " + outputData.length);
             socket.send(packetOut);
-            System.out.println("Gesendet :" + new String(data) + " Index "+ i);
+            System.out.println("Gesendet :" + new String(outputData) + " Index "+ i);
         }
     }
 
-    private byte[] addChecksum (byte [] data) {
+   /* private byte[] addChecksum (byte [] data) {
         //Daten mit Checksum Wert anreichern
         ByteArrayInputStream is = new ByteArrayInputStream(data);
         CheckedInputStream cs = new CheckedInputStream(is, new CRC32());
@@ -95,6 +99,29 @@ public class Sender {
         System.out.println("Checksum: " + checksum);
         return dataWithCheck;
     }
+    */
+
+    private byte[] addChecksum (byte [] data) throws IOException {
+        //Daten mit Checksum Wert anreichern
+        Checksum adler32 = new Adler32();
+        adler32.update(data,0, data.length);
+        long checksum = adler32.getValue();
+
+        byte [] checksumBytes = new String(checksum+ "").trim().getBytes();
+        System.out.print(checksumBytes.length);
+        // Datenarry + Checksumarray
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+        outputStream.write( data );
+        outputStream.write( checksumBytes);
+        System.out.println("Vroher: " + data.length);
+        byte dataWithCheck[] = outputStream.toByteArray( );
+        System.out.println("Danach " + dataWithCheck.length + new String(dataWithCheck));
+        adler32.reset();
+
+        System.out.println("Checksum: " + checksum);
+        return dataWithCheck;
+    }
+
 
     public static void main(String[] args) {
         Sender client = new Sender();
