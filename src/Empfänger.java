@@ -88,7 +88,7 @@ public class Empfänger {
                         clientDataWithoutChecksum[i] = packetIn.getData()[i];
                     }
                     else{
-                        checksumFromclient [i - 18] = packetIn.getData()[i]; //checksum aus Datenpaket rauslesen (Client)
+                        checksumFromclient [i - packetIn.getLength() +9] = packetIn.getData()[i]; //checksum aus Datenpaket rauslesen (Client)
                     }
                 }
 
