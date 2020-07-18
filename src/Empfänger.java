@@ -137,8 +137,7 @@ public class Empfänger {
        adler32.update(dataWithoutChecksum,0, dataWithoutChecksum.length);
        long checksum = adler32.getValue();
        long checksumClientL = Long.parseLong(new String (checksumClient).trim());
-       System.out.print(checksum);
-       System.out.print(checksumClientL);
+
 
        if (checksumClientL != checksum) {
            return true;

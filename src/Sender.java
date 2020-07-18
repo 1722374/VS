@@ -79,9 +79,8 @@ public class Sender {
             byte[] outputData = addChecksum(data);
             packetOut.setData(outputData);
             packetOut.setLength(outputData.length);
-            System.out.println("Datenlänge " + outputData.length);
             socket.send(packetOut);
-            System.out.println("Gesendet :" + new String(outputData) + " Index "+ i);
+            System.out.println("Gesendet :" + new String(outputData) + "Datenlänge: " + outputData.length + " Index "+ i);
         }
     }
 
@@ -113,9 +112,7 @@ public class Sender {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
         outputStream.write( data );
         outputStream.write( checksumBytes);
-        System.out.println("Vroher: " + data.length);
         byte dataWithCheck[] = outputStream.toByteArray( );
-        System.out.println("Danach " + dataWithCheck.length + new String(dataWithCheck));
         adler32.reset();
 
         System.out.println("Checksum: " + checksum);
